@@ -390,7 +390,7 @@ $('#loginForm').onsubmit = async e => {
   e.preventDefault();
   const { error } = await sb.auth.signInWithPassword({ email:$('#lEmail').value.trim(), password:$('#lPass').value });
   if (error){ $('#lErr').textContent = 'Не удалось войти: ' + error.message; $('#lErr').hidden = false; return; }
-  $('#loginDlg').close(); $('#lPass').value = ''; toast('Привет Алися:)');
+  $('#loginDlg').close(); $('#lPass').value = ''; toast('Админочка приветствует вас:)');
 };
 
 /* ---------- 1. приветствие ---------- */
