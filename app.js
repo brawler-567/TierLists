@@ -4,7 +4,7 @@ const CONFIG = {
   SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tY3ZsdXR2cW54cXJ6bHN0bWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NzYzOTAsImV4cCI6MjEwNzU1MjM5MH0.j_yWB5POvBEBP1LMBD9TQMR28e23sI1joch3dxu-yUM',
 
   welcomeTitle: 'Привет радасть:)',
-  welcomeText: 'я короче посидел потерпел и сделал тебе тирлист на гавнальные.. гадальные* карты, именно. вооот ну короче проходи:)',
+  welcomeText: 'я короче посидел потерпел и сделал тебе тирлист получилось всего один сделать:)',
   memeImage: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQYLlmLvniXIIHjYJ6xvRX88AP6qpl0qhzw1v4Z-GdDw&s',
   tutorialImage: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQYLlmLvniXIIHjYJ6xvRX88AP6qpl0qhzw1v4Z-GdDw&s',
   // картинки для скачивания: сначала пробуем напрямую, потом через прокси с CORS.
