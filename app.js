@@ -1,4 +1,3 @@
-/* ===================== НАСТРОЙКИ (меняй тут) ===================== */
 const CONFIG = {
   SUPABASE_URL: 'https://nmcvlutvqnxqrzlstmkr.supabase.co',
   SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tY3ZsdXR2cW54cXJ6bHN0bWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NzYzOTAsImV4cCI6MjEwNzU1MjM5MH0.j_yWB5POvBEBP1LMBD9TQMR28e23sI1joch3dxu-yUM',
