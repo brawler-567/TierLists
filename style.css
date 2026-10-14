@@ -140,20 +140,59 @@ h3{font-weight:600; font-size:1.1rem}
 .card.dragging{opacity:.3}
 .ghost-drag{position:fixed; z-index:1000; pointer-events:none; transform:rotate(-5deg) scale(1.08); filter:drop-shadow(8px 10px 0 rgba(0,0,0,.35)); margin:0}
 
+/* карточки с картинкой */
+.card--img{width:146px; height:110px}
+.face.front.img{padding:5px 5px 16px; overflow:hidden}
+.face.front.img img{width:100%; height:100%; object-fit:cover; border-radius:9px; display:block}
+.face.front.img .cap{
+  position:absolute; left:5px; right:5px; bottom:5px; margin:0; padding:1px 6px; border-radius:7px;
+  font-size:.62rem; line-height:1.35; font-weight:700; background:rgba(18,8,31,.82); color:var(--milk);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
 /* редактор */
 .panel{background:rgba(255,255,255,.07); border:3px solid var(--outline); border-radius:16px; padding:18px; margin-bottom:22px}
 label.f{display:block; font-weight:700; margin-bottom:12px}
-input.t, textarea.t{
+.hint{margin:0 0 12px; font-size:.92rem; opacity:.85}
+.hint b{color:var(--butter)}
+.warn-box{margin:0 0 12px; padding:10px 12px; border:3px dashed var(--jam); border-radius:12px; font-size:.9rem}
+.warn-box code{font:600 .85rem/1.5 ui-monospace, Consolas, monospace; background:rgba(0,0,0,.3); padding:1px 5px; border-radius:5px}
+input.t, textarea.t, select.t{
   display:block; width:100%; margin-top:6px; font:500 1rem var(--body); color:var(--ink); background:var(--milk);
   border:3px solid var(--outline); border-radius:12px; padding:10px 12px;
 }
+select.t{
+  appearance:none; -webkit-appearance:none; cursor:pointer; padding:10px 30px 10px 12px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+  background-position:calc(100% - 16px) calc(50% + 2px),calc(100% - 11px) calc(50% + 2px);
+  background-size:5px 5px,5px 5px; background-repeat:no-repeat;
+}
+select.t option{color:var(--ink); background:var(--milk)}
 textarea.t{min-height:120px; resize:vertical}
 .row{display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap}
-.row input.t{margin:0; flex:1 1 160px; min-width:0}
+.row input.t, .row select.t{margin:0; flex:1 1 160px; min-width:0}
 .row input[type=color]{width:48px; height:46px; padding:2px; flex:none; border:3px solid var(--outline); border-radius:12px; background:var(--milk); cursor:pointer}
 .row .btn{flex:none}
 .row.tier-row{flex-wrap:nowrap}
 .row.tier-row input.t{flex:1 1 auto}
+.card-row{flex-wrap:wrap}
+.card-row select.t.f-mode{flex:0 0 124px}
+.card-row input.t.f-name{flex:1 1 150px}
+.card-row input.t.f-desc{flex:1.6 1 200px}
+.card-row input.t.f-url{flex:1 1 240px}
+.card-row .f-thumb{
+  flex:none; width:54px; height:54px; display:flex; align-items:center; justify-content:center; overflow:hidden;
+  border:3px solid var(--outline); border-radius:12px; background:var(--milk);
+}
+.card-row .f-thumb img{width:100%; height:100%; object-fit:cover; display:block}
+.card-row .f-thumb.empty{background:repeating-linear-gradient(45deg,#3b2a52 0 6px,#4a3766 6px 12px)}
+.card-row .f-thumb.broken{outline:3px dashed var(--jam); outline-offset:2px}
+.card-row[data-mode=text] .f-url, .card-row[data-mode=text] .f-thumb{display:none}
+.card-row[data-mode=image] .f-desc{display:none}
+.card-row[data-mode=image] .f-url{order:1}
+.card-row[data-mode=image] .f-thumb{order:2}
+.card-row[data-mode=image] .f-name{order:3}
+.card-row[data-mode=image] .btn{order:4}
 .add-card{display:grid; grid-template-columns:1fr 1.6fr auto; gap:8px; margin-bottom:12px; align-items:center}
 .add-card input.t{margin:0}
 details{margin:6px 0 16px}
@@ -173,11 +212,13 @@ dialog .row{justify-content:flex-end; margin-top:16px}
   .add-card{grid-template-columns:1fr}
   .add-card .btn{width:100%}
   .card{width:96px; height:96px}
+  .card--img{width:120px; height:90px}
   .tray{margin:18px -20px 0}
   .row.tier-row{flex-wrap:wrap}
   .row.tier-row input.t{flex:1 1 100%; order:1}
   .row.tier-row input[type=color]{order:0}
   .row.tier-row .btn{order:2}
+  .card-row select.t.f-mode{flex:1 1 100%}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation:none!important; transition-duration:.01ms!important}

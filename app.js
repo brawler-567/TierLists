@@ -236,12 +236,32 @@ function bindHome(){
 const drag = { active:false, pending:null };
 const placeKey = id => 'blini:place:' + id;
 
+/* карточка-картинка живёт в колонке cards.image_url.
+   Если её ещё нет в базе — работаем на текстовых карточках и предупреждаем в редакторе. */
+let IMAGE_COL = null;
+async function imageColReady(){
+  if (IMAGE_COL !== null) return IMAGE_COL;
+  const { error } = await sb.from('cards').select('image_url').limit(1);
+  IMAGE_COL = !error;
+  return IMAGE_COL;
+}
+async function loadCards(tierlistId){
+  let r = await sb.from('cards').select('*').eq('tierlist_id', tierlistId).order('position');
+  if (r.error && /image_url|42703/i.test(r.error.message || '')){
+    IMAGE_COL = false;
+    r = await sb.from('cards').select('id,tierlist_id,name,description,position').eq('tierlist_id', tierlistId).order('position');
+  } else if (!r.error){
+    IMAGE_COL = true;
+  }
+  return r;
+}
+
 async function openPlay(id){
   show('s-play');
   $('#pTitle').textContent = ''; $('#tiers').replaceChildren(); $('#pool').replaceChildren();
   const [a, b] = await Promise.all([
     sb.from('tierlists').select('*').eq('id', id).single(),
-    sb.from('cards').select('*').eq('tierlist_id', id).order('position'),
+    loadCards(id),
   ]);
   if (a.error || b.error || !a.data){ toast('Тирлист не найден'); nav('#/'); return; }
   state.current = { tl:a.data, cards:b.data };
@@ -295,10 +315,24 @@ function bindPlay(){
 }
 
 function makeCard(c){
-  const el = h('div', { class:'card', tabindex:'0', 'data-id':c.id, 'aria-label':c.name },
+  const url = (c.image_url || '').trim();
+  const label = (c.name || '').trim();
+  const front = h('div', { class: url ? 'face front img' : 'face front' });
+  if (url){
+    const img = h('img', { src:url, alt:label, loading:'lazy', decoding:'async' });
+    img.addEventListener('error', () => {
+      front.classList.remove('img');
+      front.replaceChildren(h('span', {}, label || 'картинка не загрузилась'));
+    });
+    front.append(img);
+    if (label) front.append(h('span', { class:'cap' }, label));
+  } else {
+    front.append(h('span', {}, label || 'без названия'));
+  }
+  const el = h('div', { class:'card' + (url ? ' card--img' : ''), tabindex:'0', 'data-id':c.id, 'aria-label':label || url },
     h('div', { class:'flip' },
-      h('div', { class:'face front' }, h('span', {}, c.name)),
-      h('div', { class:'face back' }, h('span', {}, c.description || 'Описания нет'))));
+      front,
+      h('div', { class:'face back' }, h('span', {}, c.description || (url ? 'Описания нет' : label || 'Описания нет')))));
   let t;
   el.addEventListener('pointerenter', e => {
     if (e.pointerType !== 'mouse' || drag.active) return;
@@ -402,15 +436,19 @@ async function openEdit(id){
   } else {
     const [a, b] = await Promise.all([
       sb.from('tierlists').select('*').eq('id', id).single(),
-      sb.from('cards').select('*').eq('tierlist_id', id).order('position'),
+      loadCards(id),
     ]);
     if (a.error || b.error || !a.data){ toast('Тирлист не найден'); nav('#/'); return; }
     state.edit = { id, isNew:false, title:a.data.title, description:a.data.description || '',
-      tiers:a.data.tiers || [], cards:b.data.map(c => ({ id:c.id, name:c.name, description:c.description || '' })),
+      tiers:a.data.tiers || [],
+      cards:b.data.map(c => ({ id:c.id, name:c.name || '', description:c.description || '',
+        imageUrl:c.image_url || '', mode:c.image_url ? 'image' : 'text' })),
       orig:b.data.map(c => c.id) };
   }
+  await imageColReady();
   $('#eHeading').textContent = state.edit.isNew ? 'Новый тирлист' : 'Редактирование';
   $('#eTitle').value = state.edit.title; $('#eDesc').value = state.edit.description;
+  $('#imgWarn').hidden = IMAGE_COL !== false;
   renderTiersEdit(); renderCardsEdit();
 }
 
@@ -431,19 +469,54 @@ function renderCardsEdit(){
   const cards = state.edit.cards;
   $('#eCount').textContent = cards.length ? `(${cards.length})` : '';
   cards.forEach((c, i) => {
-    box.append(h('div', { class:'row card-row', 'data-index':i },
-      h('input', { class:'t', value:c.name, maxlength:'60', placeholder:'Название', 'data-field':'name', 'aria-label':'Название карточки' }),
-      h('input', { class:'t', value:c.description, maxlength:'400', placeholder:'Описание', style:'flex:1.6', 'data-field':'description', 'aria-label':'Описание карточки' }),
+    const url = (c.imageUrl || '').trim();
+    const mode = c.mode === 'image' ? 'image' : 'text';
+    const thumb = h('span', { class:'f-thumb' + (url ? '' : ' empty') });
+    if (url){
+      const im = h('img', { src:url, alt:'' });
+      im.addEventListener('error', () => thumb.classList.add('broken'));
+      thumb.append(im);
+    }
+    const type = h('select', { class:'t f-mode', 'data-field':'mode', 'aria-label':'Тип карточки' },
+      h('option', { value:'text' }, 'Текст'),
+      h('option', { value:'image' }, 'Картинка'));
+    type.value = mode;
+    box.append(h('div', { class:'row card-row', 'data-index':i, 'data-mode':mode },
+      type,
+      h('input', { class:'t f-name', value:c.name, maxlength:'60', placeholder:'Название', 'data-field':'name', 'aria-label':'Название карточки' }),
+      h('input', { class:'t f-desc', value:c.description, maxlength:'400', placeholder:'Описание', 'data-field':'description', 'aria-label':'Описание карточки' }),
+      h('input', { class:'t f-url', value:url, placeholder:'Ссылка на картинку (https://…)', 'data-field':'imageUrl', 'aria-label':'Ссылка на картинку' }),
+      thumb,
       h('button', { class:'btn jam small', type:'button', 'data-act':'del', 'aria-label':'Убрать карточку' }, 'Убрать')));
   });
 }
 function addCardFromForm(){
   if (!state.edit) return;
   const name = $('#cName').value.trim(); if (!name){ $('#cName').focus(); return; }
-  state.edit.cards.push({ id:uid(), name, description:$('#cDesc').value.trim() });
+  state.edit.cards.push({ id:uid(), name, description:$('#cDesc').value.trim(), imageUrl:'', mode:'text' });
   $('#cName').value = ''; $('#cDesc').value = '';
   renderCardsEdit(); $('#cName').focus();
 }
+function updateThumb(row, url){
+  const thumb = row.querySelector('.f-thumb'); if (!thumb) return;
+  const u = (url || '').trim();
+  thumb.classList.toggle('empty', !u);
+  thumb.classList.remove('broken');
+  thumb.replaceChildren();
+  if (!u) return;
+  const im = h('img', { src:u, alt:'' });
+  im.addEventListener('error', () => thumb.classList.add('broken'));
+  thumb.append(im);
+}
+function parseBulkLine(l){
+  const parts = l.split('|');
+  const head = (parts[0] || '').trim();
+  const tail = parts.slice(1).map(s => s.trim());
+  const url = tail.find(isUrl) || (isUrl(head) ? head : '');
+  const description = tail.filter(s => !isUrl(s)).join(' | ').trim();
+  return { id:uid(), name:isUrl(head) ? '' : head, description, imageUrl:url, mode:url ? 'image' : 'text' };
+}
+const isUrl = s => /^https?:\/\/\S+$/i.test((s || '').trim());
 function bindEdit(){
   $('#editBack').addEventListener('click', () => nav('#/'));
   $('#eTitle').addEventListener('input', e => { if (state.edit) state.edit.title = e.target.value; });
@@ -474,8 +547,26 @@ function bindEdit(){
   });
 
   delegate('#eCards', 'input', 'input[data-field]', (e, el) => {
+    const row = el.closest('[data-index]');
+    const i = Number(row.dataset.index);
+    const c = state.edit?.cards[i]; if (!c) return;
+    c[el.dataset.field] = el.value;
+    if (el.dataset.field === 'imageUrl') updateThumb(row, el.value);
+  });
+  delegate('#eCards', 'change', 'select[data-field="mode"]', (e, el) => {
+    if (!state.edit) return;
     const i = Number(el.closest('[data-index]').dataset.index);
-    const c = state.edit?.cards[i]; if (c) c[el.dataset.field] = el.value;
+    const c = state.edit.cards[i]; if (!c) return;
+    c.mode = el.value;
+    if (c.mode === 'text') c.imageUrl = '';
+    else if (!c.imageUrl) c.imageUrl = '';
+    renderCardsEdit();
+    const sel = $$(`#eCards [data-index="${i}"] select[data-field="mode"]`)[0];
+    if (sel) sel.focus();
+    if (c.mode === 'image'){
+      const url = $$(`#eCards [data-index="${i}"] input[data-field="imageUrl"]`)[0];
+      if (url) url.focus();
+    }
   });
   delegate('#eCards', 'click', 'button[data-act="del"]', (e, btn) => {
     if (!state.edit) return;
@@ -491,10 +582,7 @@ function bindEdit(){
   $('#bulkAdd').addEventListener('click', () => {
     if (!state.edit) return;
     const lines = $('#bulk').value.split('\n').map(l => l.trim()).filter(Boolean);
-    lines.forEach(l => {
-      const [n, ...d] = l.split('|');
-      if (n.trim()) state.edit.cards.push({ id:uid(), name:n.trim(), description:d.join('|').trim() });
-    });
+    lines.forEach(l => state.edit.cards.push(parseBulkLine(l)));
     $('#bulk').value = ''; renderCardsEdit(); if (lines.length) toast(`Добавлено: ${lines.length}`);
   });
 
@@ -506,15 +594,23 @@ function bindEdit(){
     if (!tiers.length){ toast('Нужен хотя бы один тир'); return; }
     const btn = $('#editSave'); btn.disabled = true; btn.textContent = 'Сохраняю…';
     try {
+      const imgOk = await imageColReady();
       let r = await sb.from('tierlists').upsert({ id:e.id, title, description:e.description.trim(), tiers });
       if (r.error) throw r.error;
-      const rows = e.cards.filter(c => c.name.trim()).map((c, i) => ({
-        id:c.id, tierlist_id:e.id, name:c.name.trim(), description:c.description.trim(), position:i }));
+      const rows = e.cards
+        .filter(c => c.name.trim() || (imgOk && (c.imageUrl || '').trim()))
+        .map((c, i) => {
+          const row = { id:c.id, tierlist_id:e.id, name:c.name.trim(), description:c.description.trim(), position:i };
+          if (imgOk) row.image_url = (c.imageUrl || '').trim() || null;
+          return row;
+        });
       if (rows.length){ r = await sb.from('cards').upsert(rows); if (r.error) throw r.error; }
       const keep = new Set(rows.map(c => c.id));
       const removed = e.orig.filter(id => !keep.has(id));
       if (removed.length){ r = await sb.from('cards').delete().in('id', removed); if (r.error) throw r.error; }
-      toast('Сохранено'); nav('#/');
+      if (!imgOk && e.cards.some(c => (c.imageUrl || '').trim())) toast('Сохранено, но картинки не вышли: нужна колонка cards.image_url');
+      else toast('Сохранено');
+      nav('#/');
     } catch (err) {
       toast('Не сохранилось: ' + (err.message || err));
     } finally {

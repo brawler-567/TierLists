@@ -114,6 +114,8 @@
 
     <div class="panel">
       <h3>Карточки <span class="muted" id="eCount"></span></h3>
+      <p class="hint">Карточка бывает <b>текстовой</b> (название + описание) или <b>картинкой</b> — тогда в строке выбери «Картинка» и вставь ссылку. Подпись под картинкой необязательна, описание показывается при наведении.</p>
+      <p class="warn-box" id="imgWarn" hidden>Картинки не сохранятся: в таблице <code>cards</code> нет колонки <code>image_url</code>. Выполни в Supabase → SQL Editor:<br><code>alter table cards add column if not exists image_url text;</code></p>
       <div class="add-card">
         <input class="t" id="cName" maxlength="60" placeholder="Название">
         <input class="t" id="cDesc" maxlength="400" placeholder="Описание (покажется на обороте)">
@@ -121,7 +123,7 @@
       </div>
       <details>
         <summary>Вставить списком</summary>
-        <textarea class="t" id="bulk" placeholder="Название | Описание&#10;Каждая карточка с новой строки"></textarea>
+        <textarea class="t" id="bulk" placeholder="Название | Описание | Ссылка на картинку&#10;Только ссылка — тоже можно, тогда получится карточка-картинка&#10;Каждая карточка с новой строки"></textarea>
         <p style="margin:10px 0 0"><button class="btn ghost small" id="bulkAdd">Добавить все</button></p>
       </details>
       <div id="eCards"></div>
