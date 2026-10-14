@@ -182,7 +182,7 @@ dialog .row{justify-content:flex-end; margin-top:16px}
 <body>
 
 <header class="topbar">
-  <button class="brand" id="brand">Тирлисты Блини</button>
+  <button class="brand" id="brand">Тирлисты для Блини</button>
   <button class="link-btn" id="authBtn">Вход для владельца</button>
 </header>
 
@@ -371,7 +371,7 @@ function nav(hash){ if (location.hash === hash) route(); else location.hash = ha
 /* ---------- вход владельца ---------- */
 function applyOwner(){
   $$('.owner-only').forEach(e => e.hidden = !state.owner);
-  $('#authBtn').textContent = state.owner ? 'Выйти' : 'Вход для владельца';
+  $('#authBtn').textContent = state.owner ? 'Выйти' : 'Админочка:3';
 }
 async function initAuth(){
   const { data } = await sb.auth.getSession();
@@ -382,7 +382,7 @@ async function initAuth(){
   });
 }
 $('#authBtn').onclick = async () => {
-  if (state.owner){ await sb.auth.signOut(); toast('Вы вышли'); if (location.hash.startsWith('#/edit')) nav('#/'); return; }
+  if (state.owner){ await sb.auth.signOut(); toast('Выход из Админочки'); if (location.hash.startsWith('#/edit')) nav('#/'); return; }
   $('#lErr').hidden = true; $('#loginDlg').showModal();
 };
 $('#lCancel').onclick = () => $('#loginDlg').close();
@@ -390,7 +390,7 @@ $('#loginForm').onsubmit = async e => {
   e.preventDefault();
   const { error } = await sb.auth.signInWithPassword({ email:$('#lEmail').value.trim(), password:$('#lPass').value });
   if (error){ $('#lErr').textContent = 'Не удалось войти: ' + error.message; $('#lErr').hidden = false; return; }
-  $('#loginDlg').close(); $('#lPass').value = ''; toast('Привет, Блини!');
+  $('#loginDlg').close(); $('#lPass').value = ''; toast('Привет Алися:)');
 };
 
 /* ---------- 1. приветствие ---------- */
