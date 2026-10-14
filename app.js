@@ -396,7 +396,7 @@ function makeCard(c){
   const label = (c.name || '').trim();
   const front = h('div', { class: url ? 'face front img' : 'face front' });
   if (url){
-    const img = h('img', { src:url, alt:label, loading:'lazy', decoding:'async' });
+    const img = h('img', { src:url, alt:label, loading:'lazy', decoding:'async', draggable:'false' });
     img.addEventListener('error', () => {
       front.classList.remove('img');
       front.replaceChildren(h('span', {}, label || 'картинка не загрузилась'));
@@ -491,6 +491,8 @@ function endDrag(){
   drag.active = false; persistPlacement();
 }
 function bindDrag(){
+  // браузер не должен начинать свою перетаскиваемость (картинки, ссылки, текст)
+  window.addEventListener('dragstart', e => { if (e.target.closest?.('.card, a, img')) e.preventDefault(); });
   window.addEventListener('pointermove', e => {
     const p = drag.pending;
     if (p && !drag.active){
