@@ -62,7 +62,7 @@
   <!-- 4. Обучение картинкам -->
   <section id="s-tut2" class="screen center">
     <h2>А если картинка?</h2>
-    <div class="demo" id="demo2">
+    <div class="demo demo-zoom" id="demo2">
       <div class="card card--img card--zoom" id="demoCard2">
         <div class="face front img">
           <img id="tutImg" alt="Пример картинки">
@@ -70,12 +70,10 @@
         </div>
       </div>
       <span class="click-ring" id="ring2"></span>
-      <svg class="cursor" id="cursor2" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M3 2l17 8-7.5 2.2L9.5 20z" fill="#fff" stroke="#12081f" stroke-width="2" stroke-linejoin="round"/>
-      </svg>
     </div>
     <p>Карточки с картинкой не переворачиваются — оборота у них нет. Нажми на картинку <b>левой кнопкой мыши</b>: она увеличится и встанет в центр экрана. Нажми ещё раз или <kbd>Esc</kbd> — закроется. В тирлисте работает так же: ЛКМ — рассмотреть картинку, а тянуть её в тир по-прежнему нужно за карточку.</p>
-    <button class="btn" id="gotIt2" disabled>(5) Понятно</button>
+    <p class="hint" id="tut2Hint">Нажми на картинку выше — и кнопка оживёт 👇</p>
+    <button class="btn" id="gotIt2" disabled>Нажми на картинку</button>
   </section>
 
   <!-- 5. Выбор тирлиста -->

@@ -93,6 +93,8 @@ h3{font-weight:600; font-size:1.1rem}
 .cursor{position:absolute; left:0; top:0; width:30px; height:30px; z-index:3; pointer-events:none; transition:transform 1.1s cubic-bezier(.5,0,.3,1); filter:drop-shadow(2px 2px 0 var(--outline))}
 .demo.hold-ring .cursor::after{content:""}
 .card--zoom{cursor:zoom-in}
+.demo-zoom .card--zoom:hover{transform:scale(1.04); box-shadow:5px 5px 0 var(--jam); transition:transform .15s, box-shadow .15s}
+.demo-zoom .card--zoom:hover .cap{background:rgba(18,8,31,.95)}
 .click-ring{
   position:absolute; left:0; top:0; width:18px; height:18px; margin:-9px 0 0 -9px; z-index:2; pointer-events:none; opacity:0;
   border:3px solid var(--butter); border-radius:50%;

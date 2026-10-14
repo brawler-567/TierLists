@@ -7,6 +7,9 @@ const CONFIG = {
   welcomeText: 'я короче посидел потерпел и сделал тебе тирлист на гавнальные.. гадальные* карты, именно. вооот ну короче проходи:)',
   memeImage: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQYLlmLvniXIIHjYJ6xvRX88AP6qpl0qhzw1v4Z-GdDw&s',
   tutorialImage: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQYLlmLvniXIIHjYJ6xvRX88AP6qpl0qhzw1v4Z-GdDw&s',
+  // картинки для скачивания: сначала пробуем напрямую, потом через прокси с CORS.
+  // Поставь '' если прокси не нужен.
+  imageProxy: 'https://images.weserv.nl/?url=',
   testTries: 3,
 };
 const DEFAULT_TIERS = [
@@ -223,37 +226,19 @@ async function runDemo(){
 }
 
 /* ---------- 3b. обучение картинкам ---------- */
-let demoToken2 = 0, countTimer2;
+let tut2Done = false;
 function startTutorial2(){
   show('s-tut2');
-  const btn = $('#gotIt2'); let n = 5;
-  btn.disabled = true; btn.textContent = `(${n}) Понятно`;
-  clearInterval(countTimer2);
-  countTimer2 = setInterval(() => {
-    n--;
-    if (n > 0) btn.textContent = `(${n}) Понятно`;
-    else { clearInterval(countTimer2); btn.disabled = false; btn.textContent = 'Понятно'; }
-  }, 1000);
-  runDemo2();
+  tut2Done = false;
+  const btn = $('#gotIt2');
+  btn.disabled = true; btn.textContent = 'Нажми на картинку';
+  $('#tut2Hint').hidden = false;
 }
-async function runDemo2(){
-  const tok = ++demoToken2;
-  const stage = $('#demo2'), cur = $('#cursor2'), card = $('#demoCard2'), ring = $('#ring2');
-  while (tok === demoToken2){
-    const s = stage.getBoundingClientRect(), c = card.getBoundingClientRect();
-    const cx = c.left - s.left + c.width / 2, cy = c.top - s.top + c.height / 2;
-    const start = `translate(${s.width - 50}px, ${s.height - 40}px)`;
-    const end = `translate(${cx - 6}px, ${cy - 4}px)`;
-    cur.style.transition = 'none'; cur.style.transform = start; void cur.offsetWidth;
-    cur.style.transition = ''; cur.style.transform = end;
-    await sleep(1300); if (tok !== demoToken2) return;
-    ring.style.left = cx + 'px'; ring.style.top = cy + 'px';
-    ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go');
-    openLightbox($('#tutImg').src, 'Картинка крупно');
-    await sleep(2400); if (tok !== demoToken2) return;
-    closeLightbox();
-    await sleep(900);
-  }
+function clickRing(x, y){
+  const ring = $('#ring2');
+  if (!ring) return;
+  ring.style.left = x + 'px'; ring.style.top = y + 'px';
+  ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go');
 }
 function bindTutorial(){
   $('#gotIt').addEventListener('click', () => {
@@ -261,14 +246,23 @@ function bindTutorial(){
     startTutorial2();
   });
   $('#gotIt2').addEventListener('click', () => {
-    demoToken2++; clearInterval(countTimer2); closeLightbox();
+    demoToken++; closeLightbox();
     localStorage.setItem(ONB_KEY, '1'); route();
   });
-  $('#demoCard2').addEventListener('click', () => openLightbox($('#tutImg').src, 'Картинка крупно'));
+  $('#demoCard2').addEventListener('click', e => {
+    const s = $('#demo2').getBoundingClientRect();
+    clickRing(e.clientX - s.left, e.clientY - s.top);
+    openLightbox($('#tutImg').src, 'Картинка крупно');
+    if (tut2Done) return;
+    tut2Done = true;
+    const b = $('#gotIt2');
+    b.disabled = false; b.textContent = 'Понятно';
+    $('#tut2Hint').hidden = true;
+  });
   $('#tutImg').src = CONFIG.tutorialImage || CONFIG.memeImage;
   $('#again').addEventListener('click', () => {
-    demoToken++; demoToken2++;
-    clearInterval(countTimer); clearInterval(countTimer2); closeLightbox();
+    demoToken++;
+    clearInterval(countTimer); closeLightbox();
     localStorage.removeItem(ONB_KEY); startOnboarding();
   });
 }
@@ -422,17 +416,29 @@ function wrapLines(ctx, text, maxW, maxLines){
   return out;
 }
 async function loadImageSafe(url){
-  const local = /^(data:|blob:)/i.test(url);
-  try {
-    const res = await fetch(url, { mode:'cors', credentials:'omit' });
-    if (res.ok){
+  const tries = [url];
+  if (CONFIG.imageProxy && /^https?:\/\//i.test(url)){
+    tries.push(CONFIG.imageProxy + encodeURIComponent(url.replace(/^https?:\/\//i, '')));
+  }
+  for (const u of tries){
+    try {
+      const opt = { mode:'cors', credentials:'omit' };
+      if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) opt.signal = AbortSignal.timeout(12000);
+      const res = await fetch(u, opt);
+      if (!res.ok) continue;
       const blob = await res.blob();
+      if (!blob.size) continue;
       try { if (typeof createImageBitmap === 'function') return await createImageBitmap(blob); } catch {}
       return await imgToBitmap(URL.createObjectURL(blob), false);
-    }
-  } catch {}
-  try { return await imgToBitmap(url, !local); } catch {}
+    } catch {}
+  }
   return null;
+}
+async function mapLimit(list, limit, fn){
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, list.length) }, async () => {
+    while (i < list.length){ const k = i++; await fn(list[k], k); }
+  }));
 }
 function imgToBitmap(src, cors){
   return new Promise((res, rej) => {
@@ -490,7 +496,7 @@ function drawCard(ctx, c, x, y, imgs){
       ctx.setLineDash([7, 5]); ctx.lineWidth = 3; ctx.strokeStyle = PNG.jam;
       roundRect(ctx, x + 3, y + 3, PNG.CW - 6, PNG.CH - 6, 8); ctx.stroke(); ctx.setLineDash([]);
     }
-    drawTextBlock(ctx, name, desc, x + PNG.CW/2, y + PNG.CH/2, PNG.CW - 20);
+    drawTextBlock(ctx, name || (url ? 'картинка не загрузилась' : 'без названия'), desc, x + PNG.CW/2, y + PNG.CH/2, PNG.CW - 20);
   }
   ctx.lineWidth = 3; ctx.strokeStyle = PNG.outline;
   roundRect(ctx, x, y, PNG.CW, PNG.CH, 10); ctx.stroke();
@@ -529,7 +535,8 @@ async function renderTierlistPng(tl, cards){
 
   const urls = [...new Set(cards.map(c => (c.image_url || '').trim()).filter(Boolean))];
   const imgs = new Map();
-  await Promise.all(urls.map(async u => { const b = await loadImageSafe(u); if (b) imgs.set(u, b); }));
+  let missing = 0;
+  await mapLimit(urls, 8, async u => { const b = await loadImageSafe(u); if (b) imgs.set(u, b); else missing++; });
 
   let y = headH;
   for (const r of rows){
@@ -552,16 +559,16 @@ async function renderTierlistPng(tl, cards){
   ctx.fillStyle = 'rgba(255,246,227,.5)'; ctx.font = "500 14px 'Golos Text', system-ui, sans-serif";
   ctx.fillText(`Тирлисты Блини · ${cards.length} ${plural(cards.length,'карточка','карточки','карточек')}`, PAD, H - 22);
 
-  return await new Promise((res, rej) => cv.toBlob(
+  return { url: await new Promise((res, rej) => cv.toBlob(
     blob => blob ? res(URL.createObjectURL(blob)) : rej(new Error('пустая картинка')),
-    'image/png'));
+    'image/png')), missing };
 }
 async function downloadTierlist(){
   if (!state.current) return;
   const btn = $('#playDownload');
   btn.disabled = true; btn.textContent = 'Рисую…';
   try {
-    const url = await renderTierlistPng(state.current.tl, state.current.cards);
+    const { url, missing } = await renderTierlistPng(state.current.tl, state.current.cards);
     const slug = (state.current.tl.title || 'tierlist').trim().toLowerCase()
       .replace(/[^a-zа-я0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'tierlist';
     const d = new Date();
@@ -569,7 +576,9 @@ async function downloadTierlist(){
     const a = h('a', { href:url, download:`${slug}-${stamp}.png` });
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    toast('Тирлист скачан, держи картинку 🥞');
+    toast(missing
+      ? `Тирлист скачан, но ${missing} ${plural(missing,'картинка','картинки','картинок')} не загрузились`
+      : 'Тирлист скачан, держи картинку 🥞');
   } catch (err) {
     toast('Не получилось нарисовать: ' + (err.message || err));
   } finally {
