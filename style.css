@@ -87,8 +87,33 @@ h3{font-weight:600; font-size:1.1rem}
 /* обучение */
 .demo{position:relative; height:240px; margin:16px auto 20px; max-width:520px; border:3px dashed rgba(255,246,227,.5); border-radius:18px; overflow:hidden}
 .demo .card{position:absolute; left:50%; top:50%; margin:-56px 0 0 -56px}
+.demo .card--img{margin:-55px 0 0 -73px}
+.demo kbd{font:700 .85rem var(--body); background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3); border-radius:6px; padding:1px 6px}
+.demo b{color:var(--butter)}
 .cursor{position:absolute; left:0; top:0; width:30px; height:30px; z-index:3; pointer-events:none; transition:transform 1.1s cubic-bezier(.5,0,.3,1); filter:drop-shadow(2px 2px 0 var(--outline))}
 .demo.hold-ring .cursor::after{content:""}
+.card--zoom{cursor:zoom-in}
+.click-ring{
+  position:absolute; left:0; top:0; width:18px; height:18px; margin:-9px 0 0 -9px; z-index:2; pointer-events:none; opacity:0;
+  border:3px solid var(--butter); border-radius:50%;
+}
+.click-ring.go{animation:ring .5s ease-out}
+@keyframes ring{from{opacity:.95; transform:scale(.35)}to{opacity:0; transform:scale(2.4)}}
+
+/* картинка крупно */
+.lightbox{
+  position:fixed; inset:0; z-index:6000; display:flex; align-items:center; justify-content:center;
+  padding:26px; background:rgba(18,8,31,.88); backdrop-filter:blur(3px); cursor:zoom-out;
+  animation:lbIn .18s ease-out;
+}
+.lightbox img{
+  max-width:min(1200px,94vw); max-height:84vh; object-fit:contain; display:block;
+  border:4px solid var(--butter); border-radius:16px; background:var(--ink-deep);
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+}
+.lb-close{position:absolute; top:16px; right:16px}
+.lb-hint{position:absolute; bottom:14px; left:0; right:0; text-align:center; margin:0; font-size:.85rem; opacity:.75}
+@keyframes lbIn{from{opacity:0}to{opacity:1}}
 
 /* главная */
 .head{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin:8px 0 22px}

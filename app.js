@@ -1,3 +1,4 @@
+/* ===================== НАСТРОЙКИ (меняй тут) ===================== */
 const CONFIG = {
   SUPABASE_URL: 'https://nmcvlutvqnxqrzlstmkr.supabase.co',
   SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tY3ZsdXR2cW54cXJ6bHN0bWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NzYzOTAsImV4cCI6MjEwNzU1MjM5MH0.j_yWB5POvBEBP1LMBD9TQMR28e23sI1joch3dxu-yUM',
@@ -5,6 +6,7 @@ const CONFIG = {
   welcomeTitle: 'Привет радасть:)',
   welcomeText: 'я короче посидел потерпел и сделал тебе тирлист на гавнальные.. гадальные* карты, именно. вооот ну короче проходи:)',
   memeImage: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQYLlmLvniXIIHjYJ6xvRX88AP6qpl0qhzw1v4Z-GdDw&s',
+  tutorialImage: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQYLlmLvniXIIHjYJ6xvRX88AP6qpl0qhzw1v4Z-GdDw&s',
   testTries: 3,
 };
 const DEFAULT_TIERS = [
@@ -50,6 +52,7 @@ function toast(msg){
 function show(id){
   $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
   document.body.dataset.screen = id;
+  closeLightbox();
   window.scrollTo(0, 0);
 }
 function nav(hash){ if (location.hash === hash) route(); else location.hash = hash; }
@@ -65,6 +68,7 @@ function delegate(root, type, selector, fn){
   });
 }
 
+/* ---------- вход владельца ---------- */
 function applyOwner(){
   $$('.owner-only').forEach(e => e.hidden = !state.owner);
   $('#authBtn').textContent = state.owner ? 'Выйти' : 'Админочка:3';
@@ -91,6 +95,37 @@ function bindAuth(){
   });
 }
 
+/* ---------- просмотр картинки крупно (ЛКМ) ---------- */
+let lbOpener = null;
+function openLightbox(src, alt){
+  const lb = $('#lightbox'), img = $('#lbImg');
+  if (!lb || !src) return;
+  lbOpener = document.activeElement;
+  img.alt = alt || '';
+  const fit = () => {
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    if (!nw || !nh) return;
+    const s = Math.min(2, (window.innerWidth * 0.94) / nw, (window.innerHeight * 0.84) / nh);
+    img.style.width = Math.round(nw * s) + 'px';
+    img.style.height = Math.round(nh * s) + 'px';
+  };
+  img.onload = fit;
+  img.src = src;
+  if (img.complete) fit();
+  lb.hidden = false;
+  $('#lbClose').focus();
+}
+function closeLightbox(){
+  const lb = $('#lightbox');
+  if (!lb || lb.hidden) return;
+  lb.hidden = true;
+  if (lbOpener && lbOpener.focus){ lbOpener.focus(); lbOpener = null; }
+}
+function bindLightbox(){
+  $('#lightbox').addEventListener('click', closeLightbox);
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+}
+
 /* ---------- 1. приветствие ---------- */
 function bindWelcome(){
   const img = $('#memeImg'), ph = $('#memePh');
@@ -115,6 +150,7 @@ function startOnboarding(){
   show('s-welcome');
 }
 
+/* ---------- 2. тест на Алису ---------- */
 function startTest(){
   const box = $('#answers'), msg = $('#testMsg');
   box.replaceChildren(); msg.textContent = '';
@@ -185,12 +221,56 @@ async function runDemo(){
     await sleep(1500);
   }
 }
+
+/* ---------- 3b. обучение картинкам ---------- */
+let demoToken2 = 0, countTimer2;
+function startTutorial2(){
+  show('s-tut2');
+  const btn = $('#gotIt2'); let n = 5;
+  btn.disabled = true; btn.textContent = `(${n}) Понятно`;
+  clearInterval(countTimer2);
+  countTimer2 = setInterval(() => {
+    n--;
+    if (n > 0) btn.textContent = `(${n}) Понятно`;
+    else { clearInterval(countTimer2); btn.disabled = false; btn.textContent = 'Понятно'; }
+  }, 1000);
+  runDemo2();
+}
+async function runDemo2(){
+  const tok = ++demoToken2;
+  const stage = $('#demo2'), cur = $('#cursor2'), card = $('#demoCard2'), ring = $('#ring2');
+  while (tok === demoToken2){
+    const s = stage.getBoundingClientRect(), c = card.getBoundingClientRect();
+    const cx = c.left - s.left + c.width / 2, cy = c.top - s.top + c.height / 2;
+    const start = `translate(${s.width - 50}px, ${s.height - 40}px)`;
+    const end = `translate(${cx - 6}px, ${cy - 4}px)`;
+    cur.style.transition = 'none'; cur.style.transform = start; void cur.offsetWidth;
+    cur.style.transition = ''; cur.style.transform = end;
+    await sleep(1300); if (tok !== demoToken2) return;
+    ring.style.left = cx + 'px'; ring.style.top = cy + 'px';
+    ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go');
+    openLightbox($('#tutImg').src, 'Картинка крупно');
+    await sleep(2400); if (tok !== demoToken2) return;
+    closeLightbox();
+    await sleep(900);
+  }
+}
 function bindTutorial(){
   $('#gotIt').addEventListener('click', () => {
     demoToken++; clearInterval(countTimer);
+    startTutorial2();
+  });
+  $('#gotIt2').addEventListener('click', () => {
+    demoToken2++; clearInterval(countTimer2); closeLightbox();
     localStorage.setItem(ONB_KEY, '1'); route();
   });
-  $('#again').addEventListener('click', () => { demoToken++; clearInterval(countTimer); localStorage.removeItem(ONB_KEY); startOnboarding(); });
+  $('#demoCard2').addEventListener('click', () => openLightbox($('#tutImg').src, 'Картинка крупно'));
+  $('#tutImg').src = CONFIG.tutorialImage || CONFIG.memeImage;
+  $('#again').addEventListener('click', () => {
+    demoToken++; demoToken2++;
+    clearInterval(countTimer); clearInterval(countTimer2); closeLightbox();
+    localStorage.removeItem(ONB_KEY); startOnboarding();
+  });
 }
 
 /* ---------- 4. выбор тирлиста ---------- */
@@ -329,15 +409,18 @@ function makeCard(c){
   const el = h('div', { class:'card' + (url ? ' card--img' : ''), tabindex:'0', 'data-id':c.id, 'aria-label':label || url },
     h('div', { class:'flip' },
       front,
-      h('div', { class:'face back' }, h('span', {}, c.description || (url ? 'Описания нет' : label || 'Описания нет')))));
+      h('div', { class:'face back' }, h('span', {}, c.description || (url ? 'У картинки нет оборота' : 'Описания нет')))));
+  if (url){ el.dataset.zoom = url; el.dataset.zoomAlt = label; }
   let t;
-  el.addEventListener('pointerenter', e => {
-    if (e.pointerType !== 'mouse' || drag.active) return;
-    t = setTimeout(() => { if (!drag.active) el.classList.add('flipped'); }, 450);
-  });
-  el.addEventListener('pointerleave', () => { clearTimeout(t); el.classList.remove('flipped'); });
-  el.addEventListener('focus', () => el.classList.add('flipped'));
-  el.addEventListener('blur', () => el.classList.remove('flipped'));
+  if (!url){ /* картинки не переворачиваются: переворот только у текстовых карточек */
+    el.addEventListener('pointerenter', e => {
+      if (e.pointerType !== 'mouse' || drag.active) return;
+      t = setTimeout(() => { if (!drag.active) el.classList.add('flipped'); }, 450);
+    });
+    el.addEventListener('pointerleave', () => { clearTimeout(t); el.classList.remove('flipped'); });
+    el.addEventListener('focus', () => el.classList.add('flipped'));
+    el.addEventListener('blur', () => el.classList.remove('flipped'));
+  }
   el.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
     drag.pending = { el, x:e.clientX, y:e.clientY, type:e.pointerType };
@@ -392,7 +475,9 @@ function loop(){
 function endDrag(){
   const p = drag.pending; drag.pending = null;
   if (!drag.active){
-    if (p && p.type !== 'mouse'){ // тап на телефоне: перевернуть карточку
+    if (!p) return;
+    if (p.el.dataset.zoom){ openLightbox(p.el.dataset.zoom, p.el.dataset.zoomAlt); return; }
+    if (p.type !== 'mouse'){ // тап на телефоне: перевернуть карточку
       const was = p.el.classList.contains('flipped');
       $$('.card.flipped').forEach(c => c.classList.remove('flipped'));
       if (!was) p.el.classList.add('flipped');
@@ -627,7 +712,7 @@ function route(){
 
 /* ---------- старт ---------- */
 ready(async () => {
-  bindAuth(); bindWelcome(); bindTutorial(); bindHome(); bindPlay(); bindDrag(); bindEdit();
+  bindAuth(); bindWelcome(); bindTutorial(); bindHome(); bindPlay(); bindDrag(); bindEdit(); bindLightbox();
   window.addEventListener('hashchange', () => { if (localStorage.getItem(ONB_KEY)) route(); });
   await initAuth();
   route();
