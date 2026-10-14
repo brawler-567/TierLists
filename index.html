@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тирлисты Блини</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;700&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#2a1745; --ink-deep:#1a0c2b; --outline:#12081f;
+  --jam:#ff4f8b; --butter:#ffd84d; --pancake:#e8a33d; --milk:#fff6e3;
+  --mint:#7ee0a4; --sky:#6ec3ff;
+  --display:'Unbounded', system-ui, sans-serif;
+  --body:'Golos Text', system-ui, sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:auto}
+body{
+  margin:0; min-height:100vh; display:flex; flex-direction:column;
+  background:var(--ink) radial-gradient(rgba(255,255,255,.07) 2px, transparent 2px) 0 0/28px 28px;
+  color:var(--milk); font:400 1rem/1.55 var(--body);
+}
+body.is-dragging{cursor:grabbing; user-select:none; -webkit-user-select:none}
+:focus-visible{outline:3px solid var(--butter); outline-offset:3px}
+
+/* верхняя панель */
+.topbar{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 20px}
+.brand{font:800 1.05rem var(--display); color:var(--butter); background:none; border:0; cursor:pointer; padding:4px 0; text-align:left}
+.link-btn{background:none; border:0; color:var(--milk); opacity:.8; text-decoration:underline; cursor:pointer; font:inherit; padding:4px}
+.link-btn:hover{opacity:1}
+
+main{flex:1; width:100%; max-width:1100px; margin:0 auto; padding:8px 20px 40px}
+.screen{display:none}
+.screen.active{display:block}
+.center{text-align:center; max-width:640px; margin:0 auto}
+footer{padding:16px 20px 28px; text-align:center; font-size:.9rem}
+body[data-screen="s-play"] footer{display:none}
+
+h1,h2,h3{font-family:var(--display); line-height:1.15; margin:0 0 .6em}
+h1{font-weight:800; font-size:clamp(1.9rem,6vw,3.2rem); color:var(--butter); text-shadow:3px 3px 0 var(--jam)}
+h2{font-weight:800; font-size:clamp(1.4rem,4vw,2rem)}
+h3{font-weight:600; font-size:1.1rem}
+
+/* кнопки */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  font:800 .95rem var(--display); color:var(--ink);
+  background:var(--butter); border:3px solid var(--outline); border-radius:14px;
+  padding:12px 20px; cursor:pointer; box-shadow:4px 4px 0 var(--outline);
+  transition:transform .12s, box-shadow .12s;
+}
+.btn:hover{transform:translate(-1px,-1px); box-shadow:6px 6px 0 var(--outline)}
+.btn:active{transform:translate(3px,3px); box-shadow:1px 1px 0 var(--outline)}
+.btn.ghost{background:var(--milk)}
+.btn.jam{background:var(--jam); color:#fff}
+.btn.small{font-size:.8rem; padding:8px 12px; box-shadow:3px 3px 0 var(--outline)}
+.btn[aria-disabled="true"], .btn:disabled{
+  background:#8c7ba3; color:#3b2a52; cursor:not-allowed; box-shadow:2px 2px 0 var(--outline); transform:none;
+}
+
+/* приветствие */
+.sticker{
+  width:min(420px,86vw); aspect-ratio:4/3; margin:12px auto 32px;
+  background:var(--milk); color:var(--ink); border:4px solid var(--outline); border-radius:18px;
+  box-shadow:9px 9px 0 var(--jam); transform:rotate(-3deg); overflow:hidden;
+  display:flex; align-items:center; justify-content:center; text-align:center; padding:16px;
+}
+.sticker img{width:100%; height:100%; object-fit:cover; margin:-16px; padding:0}
+.sticker .ph{font-weight:700; border:3px dashed var(--ink); border-radius:12px; padding:22px 16px; width:100%}
+.check{display:flex; gap:12px; align-items:flex-start; text-align:left; margin:24px auto 20px; cursor:pointer; max-width:520px}
+.check input{width:24px; height:24px; flex:none; accent-color:var(--jam); margin-top:2px}
+.warn{margin:14px 0 0; font-weight:700; color:var(--butter)}
+
+/* тест на Алису */
+.task{background:var(--milk); color:var(--ink); border:3px solid var(--outline); border-radius:16px; box-shadow:6px 6px 0 var(--jam); padding:20px; font-weight:500; font-size:1.1rem; text-align:left}
+.answers{display:grid; gap:12px; margin:24px 0 12px}
+.answer{
+  text-align:left; font:700 1rem var(--body); color:var(--ink); background:var(--milk);
+  border:3px solid var(--outline); border-radius:12px; padding:14px 16px; cursor:pointer; box-shadow:3px 3px 0 var(--outline);
+}
+.answer:hover:not(:disabled){background:var(--butter)}
+.answer.wrong{background:var(--jam); color:#fff; animation:shake .35s; cursor:not-allowed}
+.answer.right{background:var(--mint)}
+.msg{min-height:1.6em; font-weight:700; color:var(--butter)}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* обучение */
+.demo{position:relative; height:240px; margin:16px auto 20px; max-width:520px; border:3px dashed rgba(255,246,227,.5); border-radius:18px; overflow:hidden}
+.demo .card{position:absolute; left:50%; top:50%; margin:-56px 0 0 -56px}
+.cursor{position:absolute; left:0; top:0; width:30px; height:30px; z-index:3; pointer-events:none; transition:transform 1.1s cubic-bezier(.5,0,.3,1); filter:drop-shadow(2px 2px 0 var(--outline))}
+.demo.hold-ring .cursor::after{content:""}
+
+/* главная */
+.head{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin:8px 0 22px}
+.head h2{margin:0}
+.head .actions{display:flex; gap:10px; flex-wrap:wrap}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:22px}
+.list{
+  position:relative; background:var(--milk); color:var(--ink); border:3px solid var(--outline);
+  border-radius:16px; padding:18px; box-shadow:6px 6px 0 var(--outline); transition:transform .15s, box-shadow .15s;
+  display:flex; flex-direction:column; gap:10px;
+}
+.list:hover{transform:translate(-2px,-2px) rotate(-.6deg); box-shadow:8px 8px 0 var(--jam)}
+.list h3{margin:0}
+.list h3 a{color:inherit; text-decoration:none}
+.list h3 a::after{content:""; position:absolute; inset:0; border-radius:14px}
+.list p{margin:0; font-size:.95rem}
+.chips{display:flex; gap:4px; flex-wrap:wrap}
+.chip{min-width:28px; height:28px; padding:0 6px; border:2px solid var(--outline); border-radius:8px; font:800 .75rem/24px var(--display); text-align:center; color:var(--ink)}
+.list .meta{font-size:.85rem; opacity:.75}
+.list .owner-row{display:flex; gap:8px; position:relative; z-index:2; margin-top:4px}
+.muted{opacity:.8}
+.error{color:var(--butter); font-weight:700}
+
+/* тирлист */
+.tier{
+  display:grid; grid-template-columns:110px 1fr; margin-bottom:12px;
+  border:3px solid var(--outline); border-radius:16px; overflow:hidden; background:rgba(255,255,255,.07);
+}
+.tier-label{display:flex; align-items:center; justify-content:center; text-align:center; padding:8px; font:800 1.5rem var(--display); color:var(--ink); overflow-wrap:anywhere; border-right:3px solid var(--outline)}
+.zone{display:flex; flex-wrap:wrap; gap:8px; padding:8px; min-height:130px; align-content:flex-start; transition:background .15s}
+.zone.over{background:rgba(255,216,77,.16); outline:3px dashed var(--butter); outline-offset:-6px}
+.zone:empty::after{content:"Перетащи сюда"; align-self:center; margin:auto; opacity:.45; font-weight:500}
+.tray{position:sticky; bottom:0; z-index:50; background:var(--ink-deep); border-top:3px solid var(--outline); box-shadow:0 -10px 24px rgba(0,0,0,.35); padding:10px 12px 12px; margin:18px -20px 0}
+.tray-head{display:flex; justify-content:space-between; font-weight:700; margin-bottom:8px}
+.pool{max-height:36vh; overflow-y:auto; min-height:130px; border-radius:12px; overscroll-behavior:contain}
+.pool:empty::after{content:"Все карточки розданы"}
+
+/* карточки */
+.card{width:112px; height:112px; perspective:700px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; position:relative; flex:none}
+.flip{position:absolute; inset:0; transition:transform .55s; transform-style:preserve-3d}
+.card.flipped .flip{transform:rotateY(180deg)}
+.face{
+  position:absolute; inset:0; display:flex; padding:8px; text-align:center;
+  border:3px solid var(--outline); border-radius:14px; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+}
+.face span{margin:auto; max-height:100%; overflow:auto; overflow-wrap:anywhere}
+.front{background:var(--milk); color:var(--ink); font-weight:700; font-size:.95rem; box-shadow:3px 3px 0 var(--outline)}
+.back{background:var(--butter); color:var(--ink); font-size:.75rem; line-height:1.3; transform:rotateY(180deg)}
+.card.dragging{opacity:.3}
+.ghost{position:fixed; z-index:1000; pointer-events:none; transform:rotate(-5deg) scale(1.08); filter:drop-shadow(8px 10px 0 rgba(0,0,0,.35)); margin:0}
+
+/* редактор */
+.panel{background:rgba(255,255,255,.07); border:3px solid var(--outline); border-radius:16px; padding:18px; margin-bottom:22px}
+label.f{display:block; font-weight:700; margin-bottom:12px}
+input.t, textarea.t{
+  display:block; width:100%; margin-top:6px; font:500 1rem var(--body); color:var(--ink); background:var(--milk);
+  border:3px solid var(--outline); border-radius:12px; padding:10px 12px;
+}
+textarea.t{min-height:120px; resize:vertical}
+.row{display:flex; gap:8px; align-items:center; margin-bottom:8px}
+.row input.t{margin:0; flex:1; min-width:0}
+.row input[type=color]{width:48px; height:46px; padding:2px; flex:none; border:3px solid var(--outline); border-radius:12px; background:var(--milk); cursor:pointer}
+.row .btn.small{flex:none}
+.add-card{display:grid; grid-template-columns:1fr 1.6fr auto; gap:8px; margin-bottom:12px}
+.add-card input.t{margin:0}
+details{margin:6px 0 16px}
+summary{cursor:pointer; font-weight:700; margin-bottom:8px}
+
+dialog{border:3px solid var(--outline); border-radius:18px; background:var(--milk); color:var(--ink); padding:24px; width:min(420px,92vw); box-shadow:8px 8px 0 var(--jam)}
+dialog::backdrop{background:rgba(18,8,31,.7)}
+dialog .row{justify-content:flex-end; margin-top:16px}
+
+.toast{position:fixed; left:50%; bottom:24px; transform:translate(-50%,30px); opacity:0; z-index:3000; background:var(--milk); color:var(--ink); border:3px solid var(--outline); border-radius:12px; padding:10px 18px; font-weight:700; box-shadow:4px 4px 0 var(--outline); transition:.25s; pointer-events:none; max-width:92vw; text-align:center}
+.toast.show{opacity:1; transform:translate(-50%,0)}
+
+@media (max-width:640px){
+  .tier{grid-template-columns:64px 1fr}
+  .tier-label{font-size:1.1rem}
+  .add-card{grid-template-columns:1fr}
+  .card{width:96px; height:96px}
+  .tray{margin:18px -20px 0}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important; transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <button class="brand" id="brand">Тирлисты Блини</button>
+  <button class="link-btn" id="authBtn">Вход для владельца</button>
+</header>
+
+<main>
+  <!-- 1. Приветствие -->
+  <section id="s-welcome" class="screen center">
+    <div class="sticker" id="sticker">
+      <img id="memeImg" alt="" hidden>
+      <div class="ph" id="memePh">Сюда мемная картинка</div>
+    </div>
+    <h1 id="wTitle"></h1>
+    <p id="wText"></p>
+    <label class="check">
+      <input type="checkbox" id="agree">
+      <span>Начиная, вы соглашаетесь с отправкой и обработкой блиниальных гениально-кексальных данных</span>
+    </label>
+    <button class="btn" id="startBtn" aria-disabled="true">Начать</button>
+    <p class="warn" id="startWarn" role="alert" hidden>Пожалуйста, отправьте данные в никуда 🙏 👉👈</p>
+  </section>
+
+  <!-- 2. Тест на Алису -->
+  <section id="s-test" class="screen center">
+    <h2>Тест на Алису</h2>
+    <p class="task">Летели два верблюда: один серый, другой налево. Сколько весит грамм асфальта, если ёжику 24 года?</p>
+    <div class="answers" id="answers"></div>
+    <p class="msg" id="testMsg" aria-live="polite"></p>
+  </section>
+
+  <!-- 3. Обучение -->
+  <section id="s-tutorial" class="screen center">
+    <h2>Как это работает</h2>
+    <div class="demo" id="demo">
+      <div class="card" id="demoCard">
+        <div class="flip">
+          <div class="face front"><span>Блин с вареньем</span></div>
+          <div class="face back"><span>Вот так выглядит описание карточки</span></div>
+        </div>
+      </div>
+      <svg class="cursor" id="cursor" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 2l17 8-7.5 2.2L9.5 20z" fill="#fff" stroke="#12081f" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <p>Наведи курсор на карточку и задержи его: она перевернётся и покажет описание. Перетаскивай карточки снизу в нужные тиры.</p>
+    <button class="btn" id="gotIt" disabled>(5) Понятно</button>
+  </section>
+
+  <!-- 4. Выбор тирлиста -->
+  <section id="s-home" class="screen">
+    <div class="head">
+      <h2>Выбери тирлист</h2>
+      <div class="actions">
+        <button class="btn owner-only" id="newBtn" hidden>Создать тирлист</button>
+      </div>
+    </div>
+    <div class="grid" id="listGrid"></div>
+  </section>
+
+  <!-- 5. Составление тирлиста -->
+  <section id="s-play" class="screen">
+    <div class="head">
+      <div class="actions">
+        <button class="btn ghost small" id="playBack">Назад</button>
+      </div>
+      <h2 id="pTitle"></h2>
+      <div class="actions">
+        <button class="btn ghost small" id="playReset">Сбросить</button>
+        <button class="btn small" id="playSave">Отправить результат</button>
+      </div>
+    </div>
+    <div id="tiers"></div>
+    <div class="tray" id="tray">
+      <div class="tray-head"><span>Карточки</span><span id="poolCount"></span></div>
+      <div class="zone pool" data-zone="pool" id="pool"></div>
+    </div>
+  </section>
+
+  <!-- 6. Редактор (только владелец) -->
+  <section id="s-edit" class="screen">
+    <div class="head">
+      <button class="btn ghost small" id="editBack">Назад</button>
+      <h2 id="eHeading">Новый тирлист</h2>
+      <button class="btn" id="editSave">Сохранить</button>
+    </div>
+
+    <div class="panel">
+      <label class="f">Название
+        <input class="t" id="eTitle" maxlength="80" placeholder="Например: Еда на стриме">
+      </label>
+      <label class="f" style="margin-bottom:0">Описание
+        <input class="t" id="eDesc" maxlength="160" placeholder="Необязательно">
+      </label>
+    </div>
+
+    <div class="panel">
+      <h3>Тиры</h3>
+      <div id="eTiers"></div>
+      <button class="btn ghost small" id="addTier">Добавить тир</button>
+    </div>
+
+    <div class="panel">
+      <h3>Карточки <span class="muted" id="eCount"></span></h3>
+      <div class="add-card">
+        <input class="t" id="cName" maxlength="60" placeholder="Название">
+        <input class="t" id="cDesc" maxlength="400" placeholder="Описание (покажется на обороте)">
+        <button class="btn small" id="addCard">Добавить</button>
+      </div>
+      <details>
+        <summary>Вставить списком</summary>
+        <textarea class="t" id="bulk" placeholder="Название | Описание&#10;Каждая карточка с новой строки"></textarea>
+        <p style="margin:10px 0 0"><button class="btn ghost small" id="bulkAdd">Добавить все</button></p>
+      </details>
+      <div id="eCards"></div>
+    </div>
+  </section>
+</main>
+
+<footer><button class="link-btn" id="again">Пройти вступление заново</button></footer>
+
+<dialog id="loginDlg">
+  <form id="loginForm">
+    <h3>Вход для владельца</h3>
+    <label class="f">Почта <input class="t" type="email" id="lEmail" autocomplete="username" required></label>
+    <label class="f">Пароль <input class="t" type="password" id="lPass" autocomplete="current-password" required></label>
+    <p class="error" id="lErr" hidden style="color:#c2185b"></p>
+    <div class="row">
+      <button type="button" class="btn ghost small" id="lCancel">Отмена</button>
+      <button type="submit" class="btn small">Войти</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===================== НАСТРОЙКИ (меняй тут) ===================== */
+const CONFIG = {
+  SUPABASE_URL: 'https://nmcvlutvqnxqrzlstmkr.supabase.co',
+  SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tY3ZsdXR2cW54cXJ6bHN0bWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NzYzOTAsImV4cCI6MjEwNzU1MjM5MH0.j_yWB5POvBEBP1LMBD9TQMR28e23sI1joch3dxu-yUM',
+
+  welcomeTitle: 'Привет, я Блини!',
+  welcomeText: 'Сюда вставь свой текст приветствия.',
+  memeImage: '', // путь к картинке, например 'meme.jpg' (положи рядом с index.html). Пусто = заглушка
+};
+const DEFAULT_TIERS = [
+  {name:'S', color:'#ff5c7a'}, {name:'A', color:'#ff9f4a'}, {name:'B', color:'#ffd84d'},
+  {name:'C', color:'#7ee0a4'}, {name:'D', color:'#6ec3ff'},
+];
+/* ================================================================== */
+
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+const ONB_KEY = 'blini:onboarded';
+const state = { owner:false, current:null, edit:null };
+
+function h(tag, props={}, ...kids){
+  const el = document.createElement(tag);
+  for (const [k,v] of Object.entries(props)){
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style') el.style.cssText = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, '');
+    else el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null) el.append(kid);
+  return el;
+}
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id' + Date.now() + Math.random().toString(16).slice(2));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function plural(n, a, b, c){ const m=n%100, d=n%10; return (m>10&&m<20)?c : d===1?a : (d>1&&d<5)?b : c; }
+
+let toastTimer;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+function show(id){
+  $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+  document.body.dataset.screen = id;
+  window.scrollTo(0, 0);
+}
+function nav(hash){ if (location.hash === hash) route(); else location.hash = hash; }
+
+/* ---------- вход владельца ---------- */
+function applyOwner(){
+  $$('.owner-only').forEach(e => e.hidden = !state.owner);
+  $('#authBtn').textContent = state.owner ? 'Выйти' : 'Вход для владельца';
+}
+async function initAuth(){
+  const { data } = await sb.auth.getSession();
+  state.owner = !!data.session; applyOwner();
+  sb.auth.onAuthStateChange((_e, session) => {
+    const was = state.owner; state.owner = !!session; applyOwner();
+    if (was !== state.owner && localStorage.getItem(ONB_KEY)) route();
+  });
+}
+$('#authBtn').onclick = async () => {
+  if (state.owner){ await sb.auth.signOut(); toast('Вы вышли'); if (location.hash.startsWith('#/edit')) nav('#/'); return; }
+  $('#lErr').hidden = true; $('#loginDlg').showModal();
+};
+$('#lCancel').onclick = () => $('#loginDlg').close();
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const { error } = await sb.auth.signInWithPassword({ email:$('#lEmail').value.trim(), password:$('#lPass').value });
+  if (error){ $('#lErr').textContent = 'Не удалось войти: ' + error.message; $('#lErr').hidden = false; return; }
+  $('#loginDlg').close(); $('#lPass').value = ''; toast('Привет, Блини!');
+};
+
+/* ---------- 1. приветствие ---------- */
+function startOnboarding(){
+  $('#agree').checked = false; $('#startBtn').setAttribute('aria-disabled','true'); $('#startWarn').hidden = true;
+  show('s-welcome');
+}
+$('#wTitle').textContent = CONFIG.welcomeTitle;
+$('#wText').textContent  = CONFIG.welcomeText;
+if (CONFIG.memeImage){
+  const img = $('#memeImg'); img.src = CONFIG.memeImage; img.hidden = false; $('#memePh').hidden = true;
+}
+$('#agree').onchange = e => {
+  $('#startBtn').setAttribute('aria-disabled', String(!e.target.checked));
+  if (e.target.checked) $('#startWarn').hidden = true;
+};
+$('#startBtn').onclick = () => {
+  if (!$('#agree').checked){ $('#startWarn').hidden = false; return; }
+  startTest();
+};
+
+/* ---------- 2. тест на Алису ---------- */
+let mistakes = 0;
+function startTest(){
+  mistakes = 0; $('#testMsg').textContent = '';
+  const options = [
+    { text:'Слон весит 5 тонн', ok:true },
+    { text:'Григорий поел 4 часа назад' },
+    { text:'Будильник моросит хлебная паста' },
+  ];
+  const box = $('#answers'); box.replaceChildren();
+  options.forEach(o => {
+    const b = h('button', { class:'answer', type:'button' }, o.text);
+    b.onclick = () => {
+      if (o.ok){
+        b.classList.add('right'); $('#testMsg').textContent = 'Верно!';
+        $$('.answer', box).forEach(x => x.disabled = true);
+        setTimeout(startTutorial, 800); return;
+      }
+      mistakes++; b.classList.add('wrong'); b.disabled = true;
+      const msgs = ['Попробуйте ещё раз, с кем не бывает', 'Даю последний шанс', 'Тяжело да? Сократим варианты ответов'];
+      $('#testMsg').textContent = msgs[Math.min(mistakes, 3) - 1];
+      if (mistakes > 2) options.forEach((x, i) => { if (!x.ok) box.children[i].hidden = true; });
+    };
+    box.append(b);
+  });
+  show('s-test');
+}
+
+/* ---------- 3. обучение ---------- */
+let demoToken = 0, countTimer;
+function startTutorial(){
+  show('s-tutorial');
+  const btn = $('#gotIt'); let n = 5;
+  btn.disabled = true; btn.textContent = `(${n}) Понятно`;
+  clearInterval(countTimer);
+  countTimer = setInterval(() => {
+    n--;
+    if (n > 0) btn.textContent = `(${n}) Понятно`;
+    else { clearInterval(countTimer); btn.disabled = false; btn.textContent = 'Понятно'; }
+  }, 1000);
+  runDemo();
+}
+async function runDemo(){
+  const tok = ++demoToken;
+  const stage = $('#demo'), cur = $('#cursor'), card = $('#demoCard');
+  while (tok === demoToken){
+    card.classList.remove('flipped');
+    const s = stage.getBoundingClientRect(), c = card.getBoundingClientRect();
+    const start = `translate(${s.width - 50}px, ${s.height - 40}px)`;
+    const end   = `translate(${c.left - s.left + c.width/2 - 6}px, ${c.top - s.top + c.height/2 - 4}px)`;
+    cur.style.transition = 'none'; cur.style.transform = start; void cur.offsetWidth;
+    cur.style.transition = ''; cur.style.transform = end;
+    await sleep(1300); if (tok !== demoToken) return;
+    await sleep(500);  if (tok !== demoToken) return;
+    card.classList.add('flipped');
+    await sleep(2600); if (tok !== demoToken) return;
+    card.classList.remove('flipped');
+    cur.style.transform = start;
+    await sleep(1500);
+  }
+}
+$('#gotIt').onclick = () => {
+  demoToken++; clearInterval(countTimer);
+  localStorage.setItem(ONB_KEY, '1'); route();
+};
+$('#again').onclick = () => { demoToken++; localStorage.removeItem(ONB_KEY); startOnboarding(); };
+
+/* ---------- 4. выбор тирлиста ---------- */
+async function openHome(){
+  show('s-home');
+  const grid = $('#listGrid');
+  grid.replaceChildren(h('p', { class:'muted' }, 'Загружаю…'));
+  const { data, error } = await sb.from('tierlists')
+    .select('id,title,description,tiers,cards(count)').order('created_at', { ascending:false });
+  if (error){ grid.replaceChildren(h('p', { class:'error' }, 'Не получилось загрузить тирлисты: ' + error.message)); return; }
+  if (!data.length){
+    grid.replaceChildren(h('p', { class:'muted' }, state.owner ? 'Пока пусто. Нажми «Создать тирлист».' : 'Тирлистов пока нет. Загляни позже.'));
+    return;
+  }
+  grid.replaceChildren(...data.map(listCard));
+}
+function listCard(t){
+  const n = t.cards?.[0]?.count ?? 0;
+  const owner = h('div', { class:'owner-row' },
+    h('button', { class:'btn ghost small', onclick:() => nav('#/edit/' + t.id) }, 'Изменить'),
+    h('button', { class:'btn jam small', onclick: async () => {
+      if (!confirm(`Удалить «${t.title}» вместе с карточками?`)) return;
+      const { error } = await sb.from('tierlists').delete().eq('id', t.id);
+      if (error) toast('Не удалось удалить: ' + error.message); else { toast('Удалено'); openHome(); }
+    }}, 'Удалить'));
+  owner.hidden = !state.owner; owner.classList.add('owner-only');
+  return h('article', { class:'list' },
+    h('div', { class:'chips' }, (t.tiers || []).map(x => h('span', { class:'chip', style:`background:${x.color}` }, x.name))),
+    h('h3', {}, h('a', { href:'#/t/' + t.id }, t.title)),
+    t.description ? h('p', {}, t.description) : null,
+    h('div', { class:'meta' }, `${n} ${plural(n, 'карточка', 'карточки', 'карточек')}`),
+    owner);
+}
+$('#newBtn').onclick = () => nav('#/edit/new');
+$('#brand').onclick = () => { if (localStorage.getItem(ONB_KEY)) nav('#/'); };
+
+/* ---------- 5. составление тирлиста ---------- */
+const drag = { active:false, pending:null };
+const placeKey = id => 'blini:place:' + id;
+
+async function openPlay(id){
+  show('s-play');
+  $('#pTitle').textContent = ''; $('#tiers').replaceChildren(); $('#pool').replaceChildren();
+  const [a, b] = await Promise.all([
+    sb.from('tierlists').select('*').eq('id', id).single(),
+    sb.from('cards').select('*').eq('tierlist_id', id).order('position'),
+  ]);
+  if (a.error || b.error || !a.data){ toast('Тирлист не найден'); nav('#/'); return; }
+  state.current = { tl:a.data, cards:b.data };
+  renderPlay();
+}
+function renderPlay(){
+  const { tl, cards } = state.current;
+  $('#pTitle').textContent = tl.title;
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(placeKey(tl.id)) || '{}'); } catch {}
+  const byId = new Map(cards.map(c => [c.id, c])), placed = new Set();
+
+  const tiersBox = $('#tiers'); tiersBox.replaceChildren();
+  (tl.tiers || []).forEach(t => {
+    const zone = h('div', { class:'zone', 'data-zone':t.id });
+    (saved[t.id] || []).forEach(cid => {
+      if (byId.has(cid) && !placed.has(cid)){ placed.add(cid); zone.append(makeCard(byId.get(cid))); }
+    });
+    tiersBox.append(h('div', { class:'tier' },
+      h('div', { class:'tier-label', style:`background:${t.color}` }, t.name), zone));
+  });
+  const pool = $('#pool'); pool.replaceChildren();
+  cards.filter(c => !placed.has(c.id)).forEach(c => pool.append(makeCard(c)));
+  updateCount();
+}
+function updateCount(){
+  const n = $$('.card', $('#pool')).length;
+  $('#poolCount').textContent = n ? `Осталось: ${n}` : '';
+}
+function readPlacement(){
+  const out = {};
+  $$('#s-play [data-zone]').forEach(z => { out[z.dataset.zone] = $$(':scope > .card', z).map(c => c.dataset.id); });
+  return out;
+}
+function persistPlacement(){
+  if (!state.current) return;
+  localStorage.setItem(placeKey(state.current.tl.id), JSON.stringify(readPlacement()));
+  updateCount();
+}
+$('#playBack').onclick = () => nav('#/');
+$('#playReset').onclick = () => {
+  if (!state.current) return;
+  localStorage.removeItem(placeKey(state.current.tl.id)); renderPlay(); toast('Сброшено');
+};
+$('#playSave').onclick = async () => {
+  if (!state.current) return;
+  const { error } = await sb.from('submissions').insert({ tierlist_id:state.current.tl.id, placement:readPlacement() });
+  toast(error ? 'Не отправилось: ' + error.message : 'Блиниальные данные отправлены 🥞');
+};
+
+function makeCard(c){
+  const el = h('div', { class:'card', tabindex:'0', 'data-id':c.id, 'aria-label':c.name },
+    h('div', { class:'flip' },
+      h('div', { class:'face front' }, h('span', {}, c.name)),
+      h('div', { class:'face back' }, h('span', {}, c.description || 'Описания нет'))));
+  let t;
+  el.addEventListener('pointerenter', e => {
+    if (e.pointerType !== 'mouse' || drag.active) return;
+    t = setTimeout(() => { if (!drag.active) el.classList.add('flipped'); }, 450);
+  });
+  el.addEventListener('pointerleave', () => { clearTimeout(t); el.classList.remove('flipped'); });
+  el.addEventListener('focus', () => el.classList.add('flipped'));
+  el.addEventListener('blur', () => el.classList.remove('flipped'));
+  el.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    drag.pending = { el, x:e.clientX, y:e.clientY, type:e.pointerType };
+  });
+  return el;
+}
+
+function startDrag(e){
+  const { el } = drag.pending;
+  const r = el.getBoundingClientRect();
+  el.classList.remove('flipped');
+  const ghost = el.cloneNode(true);
+  ghost.classList.add('ghost'); ghost.removeAttribute('tabindex');
+  ghost.style.width = r.width + 'px'; ghost.style.height = r.height + 'px';
+  document.body.append(ghost);
+  Object.assign(drag, { active:true, el, ghost, offX:drag.pending.x - r.left, offY:drag.pending.y - r.top, x:e.clientX, y:e.clientY });
+  el.classList.add('dragging'); document.body.classList.add('is-dragging');
+  moveGhost(); loop();
+}
+function moveGhost(){
+  drag.ghost.style.left = (drag.x - drag.offX) + 'px';
+  drag.ghost.style.top  = (drag.y - drag.offY) + 'px';
+}
+function updateTarget(){
+  if (!drag.active) return;
+  const under = document.elementFromPoint(drag.x, drag.y);
+  const zone = under && under.closest('#s-play [data-zone]');
+  $$('.zone.over').forEach(z => { if (z !== zone) z.classList.remove('over'); });
+  if (!zone) return;
+  zone.classList.add('over');
+  const kids = $$(':scope > .card', zone).filter(c => c !== drag.el);
+  let before = null;
+  for (const c of kids){
+    const r = c.getBoundingClientRect();
+    if (drag.y < r.top || (drag.y <= r.bottom && drag.x < r.left + r.width / 2)){ before = c; break; }
+  }
+  if (before){
+    if (drag.el.parentNode !== zone || drag.el.nextElementSibling !== before) zone.insertBefore(drag.el, before);
+  } else if (drag.el.parentNode !== zone || zone.lastElementChild !== drag.el){
+    zone.append(drag.el);
+  }
+}
+function loop(){
+  if (!drag.active) return;
+  const trayTop = $('#tray').getBoundingClientRect().top;
+  let dy = 0;
+  if (drag.y < 90) dy = -Math.ceil((90 - drag.y) / 5);
+  else if (drag.y < trayTop && drag.y > trayTop - 70) dy = Math.ceil((drag.y - (trayTop - 70)) / 5);
+  if (dy){ window.scrollBy(0, dy); updateTarget(); }
+  drag.raf = requestAnimationFrame(loop);
+}
+window.addEventListener('pointermove', e => {
+  const p = drag.pending;
+  if (p && !drag.active){
+    if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < 6) return;
+    startDrag(e);
+  }
+  if (!drag.active) return;
+  drag.x = e.clientX; drag.y = e.clientY;
+  moveGhost(); updateTarget();
+});
+function endDrag(){
+  const p = drag.pending; drag.pending = null;
+  if (!drag.active){
+    if (p && p.type !== 'mouse'){ // тап на телефоне: перевернуть карточку
+      const was = p.el.classList.contains('flipped');
+      $$('.card.flipped').forEach(c => c.classList.remove('flipped'));
+      if (!was) p.el.classList.add('flipped');
+    }
+    return;
+  }
+  cancelAnimationFrame(drag.raf);
+  drag.ghost.remove(); drag.el.classList.remove('dragging');
+  $$('.zone.over').forEach(z => z.classList.remove('over'));
+  document.body.classList.remove('is-dragging');
+  drag.active = false; persistPlacement();
+}
+window.addEventListener('pointerup', endDrag);
+window.addEventListener('pointercancel', endDrag);
+// колёсико и прокрутка во время перетаскивания: цель под курсором пересчитывается
+window.addEventListener('scroll', () => drag.active && updateTarget(), true);
+window.addEventListener('wheel', () => drag.active && requestAnimationFrame(updateTarget), { passive:true });
+
+/* ---------- 6. редактор ---------- */
+async function openEdit(id){
+  if (!state.owner){ toast('Редактировать может только владелец. Нужен вход.'); nav('#/'); return; }
+  show('s-edit');
+  if (id === 'new'){
+    state.edit = { id:uid(), isNew:true, title:'', description:'', orig:[],
+      tiers:DEFAULT_TIERS.map(t => ({ ...t, id:uid() })), cards:[] };
+  } else {
+    const [a, b] = await Promise.all([
+      sb.from('tierlists').select('*').eq('id', id).single(),
+      sb.from('cards').select('*').eq('tierlist_id', id).order('position'),
+    ]);
+    if (a.error || b.error || !a.data){ toast('Тирлист не найден'); nav('#/'); return; }
+    state.edit = { id, isNew:false, title:a.data.title, description:a.data.description || '',
+      tiers:a.data.tiers || [], cards:b.data.map(c => ({ id:c.id, name:c.name, description:c.description || '' })),
+      orig:b.data.map(c => c.id) };
+  }
+  $('#eHeading').textContent = state.edit.isNew ? 'Новый тирлист' : 'Редактирование';
+  $('#eTitle').value = state.edit.title; $('#eDesc').value = state.edit.description;
+  renderTiersEdit(); renderCardsEdit();
+}
+$('#eTitle').oninput = e => state.edit.title = e.target.value;
+$('#eDesc').oninput  = e => state.edit.description = e.target.value;
+
+function renderTiersEdit(){
+  const box = $('#eTiers'); box.replaceChildren();
+  const tiers = state.edit.tiers;
+  tiers.forEach((t, i) => {
+    const move = d => () => { const j = i + d; if (j < 0 || j >= tiers.length) return; [tiers[i], tiers[j]] = [tiers[j], tiers[i]]; renderTiersEdit(); };
+    box.append(h('div', { class:'row' },
+      h('input', { type:'color', value:t.color, 'aria-label':'Цвет тира', oninput:e => t.color = e.target.value }),
+      h('input', { class:'t', value:t.name, maxlength:'24', placeholder:'Название тира', oninput:e => t.name = e.target.value }),
+      h('button', { class:'btn ghost small', type:'button', 'aria-label':'Выше', onclick:move(-1) }, '↑'),
+      h('button', { class:'btn ghost small', type:'button', 'aria-label':'Ниже', onclick:move(1) }, '↓'),
+      h('button', { class:'btn jam small', type:'button', onclick:() => { tiers.splice(i, 1); renderTiersEdit(); } }, 'Убрать')));
+  });
+}
+$('#addTier').onclick = () => {
+  state.edit.tiers.push({ id:uid(), name:'', color:'#c8b6ff' });
+  renderTiersEdit(); const ins = $$('#eTiers input.t'); ins[ins.length - 1]?.focus();
+};
+
+function renderCardsEdit(){
+  const box = $('#eCards'); box.replaceChildren();
+  const cards = state.edit.cards;
+  $('#eCount').textContent = cards.length ? `(${cards.length})` : '';
+  cards.forEach((c, i) => {
+    box.append(h('div', { class:'row' },
+      h('input', { class:'t', value:c.name, maxlength:'60', placeholder:'Название', oninput:e => c.name = e.target.value }),
+      h('input', { class:'t', value:c.description, maxlength:'400', placeholder:'Описание', style:'flex:1.6', oninput:e => c.description = e.target.value }),
+      h('button', { class:'btn jam small', type:'button', onclick:() => { cards.splice(i, 1); renderCardsEdit(); } }, 'Убрать')));
+  });
+}
+function addCardFromForm(){
+  const name = $('#cName').value.trim(); if (!name){ $('#cName').focus(); return; }
+  state.edit.cards.push({ id:uid(), name, description:$('#cDesc').value.trim() });
+  $('#cName').value = ''; $('#cDesc').value = '';
+  renderCardsEdit(); $('#cName').focus();
+}
+$('#addCard').onclick = addCardFromForm;
+[$('#cName'), $('#cDesc')].forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); addCardFromForm(); } }));
+$('#bulkAdd').onclick = () => {
+  const lines = $('#bulk').value.split('\n').map(l => l.trim()).filter(Boolean);
+  lines.forEach(l => {
+    const [n, ...d] = l.split('|');
+    if (n.trim()) state.edit.cards.push({ id:uid(), name:n.trim(), description:d.join('|').trim() });
+  });
+  $('#bulk').value = ''; renderCardsEdit(); if (lines.length) toast(`Добавлено: ${lines.length}`);
+};
+
+$('#editBack').onclick = () => nav('#/');
+$('#editSave').onclick = async () => {
+  const e = state.edit;
+  const title = e.title.trim();
+  const tiers = e.tiers.filter(t => t.name.trim()).map(t => ({ id:t.id, name:t.name.trim(), color:t.color }));
+  if (!title){ toast('Напиши название тирлиста'); $('#eTitle').focus(); return; }
+  if (!tiers.length){ toast('Нужен хотя бы один тир'); return; }
+  const btn = $('#editSave'); btn.disabled = true; btn.textContent = 'Сохраняю…';
+  try {
+    let r = await sb.from('tierlists').upsert({ id:e.id, title, description:e.description.trim(), tiers });
+    if (r.error) throw r.error;
+    const rows = e.cards.filter(c => c.name.trim()).map((c, i) => ({
+      id:c.id, tierlist_id:e.id, name:c.name.trim(), description:c.description.trim(), position:i }));
+    if (rows.length){ r = await sb.from('cards').upsert(rows); if (r.error) throw r.error; }
+    const keep = new Set(rows.map(c => c.id));
+    const removed = e.orig.filter(id => !keep.has(id));
+    if (removed.length){ r = await sb.from('cards').delete().in('id', removed); if (r.error) throw r.error; }
+    toast('Сохранено'); nav('#/');
+  } catch (err) {
+    toast('Не сохранилось: ' + (err.message || err));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Сохранить';
+  }
+};
+
+/* ---------- маршрутизация ---------- */
+function route(){
+  if (!localStorage.getItem(ONB_KEY)){ startOnboarding(); return; }
+  const m = location.hash.match(/^#\/(t|edit)\/(.+)$/);
+  if (m && m[1] === 't') return openPlay(m[2]);
+  if (m && m[1] === 'edit') return openEdit(m[2]);
+  return openHome();
+}
+window.addEventListener('hashchange', () => { if (localStorage.getItem(ONB_KEY)) route(); });
+
+(async () => { await initAuth(); route(); })();
+</script>
+</body>
+</html>
