@@ -319,7 +319,7 @@ function startDrag(e){
   const r = el.getBoundingClientRect();
   el.classList.remove('flipped');
   const ghost = el.cloneNode(true);
-  ghost.classList.add('ghost'); ghost.removeAttribute('tabindex');
+  ghost.classList.add('ghost-drag'); ghost.removeAttribute('tabindex');
   ghost.style.width = r.width + 'px'; ghost.style.height = r.height + 'px';
   document.body.append(ghost);
   Object.assign(drag, { active:true, el, ghost, offX:drag.pending.x - r.left, offY:drag.pending.y - r.top, x:e.clientX, y:e.clientY });
