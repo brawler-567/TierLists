@@ -66,7 +66,6 @@ function delegate(root, type, selector, fn){
   });
 }
 
-/* ---------- вход владельца ---------- */
 function applyOwner(){
   $$('.owner-only').forEach(e => e.hidden = !state.owner);
   $('#authBtn').textContent = state.owner ? 'Выйти' : 'Админочка:3';
@@ -117,7 +116,6 @@ function startOnboarding(){
   show('s-welcome');
 }
 
-/* ---------- 2. тест на Алису ---------- */
 function startTest(){
   const box = $('#answers'), msg = $('#testMsg');
   box.replaceChildren(); msg.textContent = '';
