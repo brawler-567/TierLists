@@ -384,11 +384,197 @@ function bindPlay(){
     if (!state.current) return;
     localStorage.removeItem(placeKey(state.current.tl.id)); renderPlay(); toast('Сброшено');
   });
-  $('#playSave').addEventListener('click', async () => {
-    if (!state.current) return;
-    const { error } = await sb.from('submissions').insert({ tierlist_id:state.current.tl.id, placement:readPlacement() });
-    toast(error ? 'Не отправилось: ' + error.message : 'Блиниальные данные отправлены 🥞');
+  $('#playDownload').addEventListener('click', downloadTierlist);
+}
+
+/* ---------- скачивание тирлиста картинкой ---------- */
+const PNG = {
+  W:1280, PAD:26, LABEL:168, CW:168, CH:126, GAP:10, ROW_PAD:12,
+  ink:'#2a1745', outline:'#12081f', milk:'#fff6e3', butter:'#ffd84d', jam:'#ff4f8b',
+  display:"800 26px 'Unbounded', system-ui, sans-serif",
+  body:"500 16px 'Golos Text', system-ui, sans-serif",
+};
+function roundRect(ctx, x, y, w, h, r){
+  const k = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+k, y);
+  ctx.arcTo(x+w, y, x+w, y+h, k);
+  ctx.arcTo(x+w, y+h, x, y+h, k);
+  ctx.arcTo(x, y+h, x, y, k);
+  ctx.arcTo(x, y, x+w, y, k);
+  ctx.closePath();
+}
+function wrapLines(ctx, text, maxW, maxLines){
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const out = [];
+  let line = '';
+  for (const w of words){
+    const t = line ? line + ' ' + w : w;
+    if (ctx.measureText(t).width <= maxW || !line) line = t;
+    else { out.push(line); line = w; if (out.length === maxLines) break; }
+  }
+  if (line && out.length < maxLines) out.push(line);
+  if (out.length === maxLines && words.length && ctx.measureText(out[maxLines-1]).width > maxW - 1){
+    let l = out[maxLines-1];
+    while (l.length > 1 && ctx.measureText(l + '…').width > maxW) l = l.slice(0, -1);
+    out[maxLines-1] = l + '…';
+  }
+  return out;
+}
+async function loadImageSafe(url){
+  const local = /^(data:|blob:)/i.test(url);
+  try {
+    const res = await fetch(url, { mode:'cors', credentials:'omit' });
+    if (res.ok){
+      const blob = await res.blob();
+      try { if (typeof createImageBitmap === 'function') return await createImageBitmap(blob); } catch {}
+      return await imgToBitmap(URL.createObjectURL(blob), false);
+    }
+  } catch {}
+  try { return await imgToBitmap(url, !local); } catch {}
+  return null;
+}
+function imgToBitmap(src, cors){
+  return new Promise((res, rej) => {
+    const im = new Image();
+    if (cors) im.crossOrigin = 'anonymous';
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error('image'));
+    im.src = src;
   });
+}
+function drawTextBlock(ctx, name, desc, cx, cy, maxW){
+  ctx.textAlign = 'center';
+  ctx.font = "700 17px 'Golos Text', system-ui, sans-serif";
+  const nl = wrapLines(ctx, name || 'без названия', maxW, 3);
+  ctx.font = "500 13px 'Golos Text', system-ui, sans-serif";
+  const dl = desc ? wrapLines(ctx, desc, maxW, 3) : [];
+  const h = nl.length * 20 + (dl.length ? dl.length * 17 + 6 : 0);
+  let y = cy - h / 2 + 10;
+  ctx.fillStyle = PNG.ink;
+  ctx.font = "700 17px 'Golos Text', system-ui, sans-serif";
+  for (const l of nl){ ctx.fillText(l, cx, y); y += 20; }
+  if (dl.length){
+    y += 6;
+    ctx.fillStyle = 'rgba(42,23,69,.75)';
+    ctx.font = "500 13px 'Golos Text', system-ui, sans-serif";
+    for (const l of dl){ ctx.fillText(l, cx, y); y += 17; }
+  }
+  ctx.textAlign = 'left';
+}
+function drawCard(ctx, c, x, y, imgs){
+  const url = (c.image_url || '').trim(), name = (c.name || '').trim();
+  const desc = (c.description || '').trim();
+  const bmp = url ? imgs.get(url) : null;
+  roundRect(ctx, x, y, PNG.CW, PNG.CH, 10);
+  ctx.fillStyle = PNG.milk; ctx.fill();
+  if (url && bmp){
+    ctx.save();
+    roundRect(ctx, x, y, PNG.CW, PNG.CH, 10); ctx.clip();
+    const s = Math.max(PNG.CW / bmp.width, PNG.CH / bmp.height);
+    const dw = bmp.width * s, dh = bmp.height * s;
+    ctx.drawImage(bmp, x + (PNG.CW - dw)/2, y + (PNG.CH - dh)/2, dw, dh);
+    if (name){
+      const th = 20;
+      ctx.fillStyle = 'rgba(18,8,31,.82)';
+      ctx.fillRect(x, y + PNG.CH - th, PNG.CW, th);
+      ctx.fillStyle = PNG.milk; ctx.font = "700 12px 'Golos Text', system-ui, sans-serif";
+      ctx.textAlign = 'center';
+      ctx.fillText(wrapLines(ctx, name, PNG.CW - 12, 1)[0] || '', x + PNG.CW/2, y + PNG.CH - th/2);
+    }
+    ctx.restore();
+  } else {
+    ctx.fillStyle = url ? '#efe4ff' : PNG.milk;
+    roundRect(ctx, x, y, PNG.CW, PNG.CH, 10); ctx.fill();
+    if (url){
+      ctx.setLineDash([7, 5]); ctx.lineWidth = 3; ctx.strokeStyle = PNG.jam;
+      roundRect(ctx, x + 3, y + 3, PNG.CW - 6, PNG.CH - 6, 8); ctx.stroke(); ctx.setLineDash([]);
+    }
+    drawTextBlock(ctx, name, desc, x + PNG.CW/2, y + PNG.CH/2, PNG.CW - 20);
+  }
+  ctx.lineWidth = 3; ctx.strokeStyle = PNG.outline;
+  roundRect(ctx, x, y, PNG.CW, PNG.CH, 10); ctx.stroke();
+  ctx.textAlign = 'left';
+}
+async function renderTierlistPng(tl, cards){
+  const { W, PAD, LABEL, CW, CH, GAP, ROW_PAD } = PNG;
+  const byId = new Map(cards.map(c => [c.id, c]));
+  const placement = readPlacement();
+  const rows = (tl.tiers || []).map(t => ({ name:t.name, color:t.color || '#c8b6ff',
+    ids:(placement[t.id] || []).filter(id => byId.has(id)) }));
+  const used = new Set(rows.flatMap(r => r.ids));
+  const left = cards.filter(c => !used.has(c.id));
+  if (left.length) rows.push({ name:'Не расставлено', color:'#8c7ba3', ids:left.map(c => c.id) });
+
+  const perRow = Math.max(1, Math.floor((W - PAD*2 - LABEL + GAP) / (CW + GAP)));
+  const linesOf = ids => Math.max(1, Math.ceil(ids.length / perRow));
+  const rowHeight = ids => linesOf(ids) * CH + (linesOf(ids) - 1) * GAP + ROW_PAD*2;
+  const headH = tl.description ? 108 : 92;
+  const H = headH + rows.reduce((a, r) => a + rowHeight(r.ids), 0) + 44;
+
+  const dpr = 2;
+  const cv = document.createElement('canvas');
+  cv.width = W * dpr; cv.height = H * dpr;
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = PNG.ink; ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = PNG.butter; ctx.font = "800 36px 'Unbounded', system-ui, sans-serif";
+  ctx.fillText((tl.title || 'Тирлист').slice(0, 42), PAD, 46);
+  if (tl.description){
+    ctx.fillStyle = 'rgba(255,246,227,.72)'; ctx.font = PNG.body;
+    ctx.fillText(tl.description.slice(0, 90), PAD, 80);
+  }
+
+  const urls = [...new Set(cards.map(c => (c.image_url || '').trim()).filter(Boolean))];
+  const imgs = new Map();
+  await Promise.all(urls.map(async u => { const b = await loadImageSafe(u); if (b) imgs.set(u, b); }));
+
+  let y = headH;
+  for (const r of rows){
+    const ly = y + ROW_PAD;
+    roundRect(ctx, PAD, ly, LABEL - GAP, CH, 10);
+    ctx.fillStyle = r.color; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = PNG.outline; ctx.stroke();
+    ctx.fillStyle = PNG.ink; ctx.font = PNG.display; ctx.textAlign = 'center';
+    const ls = wrapLines(ctx, r.name || '—', LABEL - GAP - 16, 2);
+    ls.forEach((ln, i) => ctx.fillText(ln, PAD + (LABEL - GAP)/2, ly + CH/2 + (i - (ls.length - 1)/2) * 26));
+    ctx.textAlign = 'left';
+    r.ids.forEach((id, i) => drawCard(ctx, byId.get(id),
+      PAD + LABEL + (i % perRow) * (CW + GAP), ly + Math.floor(i / perRow) * (CH + GAP), imgs));
+    if (!r.ids.length){
+      ctx.fillStyle = 'rgba(255,246,227,.4)'; ctx.font = PNG.body;
+      ctx.fillText('пусто', PAD + LABEL + 6, ly + CH/2);
+    }
+    y += rowHeight(r.ids);
+  }
+  ctx.fillStyle = 'rgba(255,246,227,.5)'; ctx.font = "500 14px 'Golos Text', system-ui, sans-serif";
+  ctx.fillText(`Тирлисты Блини · ${cards.length} ${plural(cards.length,'карточка','карточки','карточек')}`, PAD, H - 22);
+
+  return await new Promise((res, rej) => cv.toBlob(
+    blob => blob ? res(URL.createObjectURL(blob)) : rej(new Error('пустая картинка')),
+    'image/png'));
+}
+async function downloadTierlist(){
+  if (!state.current) return;
+  const btn = $('#playDownload');
+  btn.disabled = true; btn.textContent = 'Рисую…';
+  try {
+    const url = await renderTierlistPng(state.current.tl, state.current.cards);
+    const slug = (state.current.tl.title || 'tierlist').trim().toLowerCase()
+      .replace(/[^a-zа-я0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'tierlist';
+    const d = new Date();
+    const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    const a = h('a', { href:url, download:`${slug}-${stamp}.png` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast('Тирлист скачан, держи картинку 🥞');
+  } catch (err) {
+    toast('Не получилось нарисовать: ' + (err.message || err));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Скачать тирлист';
+  }
 }
 
 function makeCard(c){
